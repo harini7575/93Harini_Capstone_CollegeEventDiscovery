@@ -2,7 +2,6 @@ import Navbar from './Navbar.js';
 import EventCard from './EventCard.js';
 
 export default function App() {
-  // Authentication & session state variables
   const [token, setToken] = React.useState(localStorage.getItem('authToken') || '');
   const [user, setUser] = React.useState(JSON.parse(localStorage.getItem('authUser')) || null);
   const [authEmail, setAuthEmail] = React.useState('');
@@ -16,8 +15,9 @@ export default function App() {
   const [formTitle, setFormTitle] = React.useState('');
   const [formCategory, setFormCategory] = React.useState('');
   const [formDate, setFormDate] = React.useState('');
+  const [formImageUrl, setFormImageUrl] = React.useState('');
+  const [isUploading, setIsSubmittingFile] = React.useState(false);
 
-  // Fetch helper loop adding explicit authorization header attachments
   const fetchAllEvents = () => {
     fetch('/api/events')
       .then((res) => res.json())
@@ -31,7 +31,35 @@ export default function App() {
     fetchAllEvents();
   }, []);
 
-  // SIGN IN LOGIC METHOD
+  // MULTI-PART FORMDATA IMAGE UPLOAD METHOD
+  const handleImageFileChange = async (e) => {
+    const targetFile = e.target.files[0];
+    if (!targetFile) return;
+
+    setIsSubmittingFile(true);
+    const formPayload = new FormData();
+    formPayload.append('event_banner', targetFile);
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formPayload
+      });
+      const data = await response.json();
+      
+      if (response.ok) {
+        setFormImageUrl(data.imageUrl);
+        alert("Event banner image asset uploaded successfully!");
+      } else {
+        alert(data.error || "Failed to process image upload on disk.");
+      }
+    } catch (err) {
+      console.error("Upload endpoint communication failure:", err);
+    } finally {
+      setIsSubmittingFile(false);
+    }
+  };
+
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -57,7 +85,6 @@ export default function App() {
     }
   };
 
-  // LOGOUT METHOD
   const handleLogoutClick = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('authUser');
@@ -66,7 +93,6 @@ export default function App() {
     alert("Logged out successfully.");
   };
 
-  // SECURED DELETE ENTITY OPERATION
   const handleDeleteEvent = async (id) => {
     if (!window.confirm("Are you sure you want to delete this campus event listing?")) return;
 
@@ -87,18 +113,16 @@ export default function App() {
     }
   };
 
-  // Populate form fields to trigger UPDATE mode
   const startEditEvent = (event) => {
     setEditingEventId(event.id);
     setFormTitle(event.title);
     setFormCategory(event.category);
     setFormDate(event.date);
+    setFormImageUrl(event.image_url || '');
   };
 
-  // SECURED PUT ENTITY UPDATE OPERATION
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
-
     try {
       const response = await fetch(`/api/events/${editingEventId}`, {
         method: 'PUT',
@@ -109,12 +133,13 @@ export default function App() {
         body: JSON.stringify({
           title: formTitle,
           category: formCategory,
-          date: formDate
+          date: formDate,
+          image_url: formImageUrl
         })
       });
 
       if (response.ok) {
-        alert("Event entity context modified successfully.");
+        alert("Event modified successfully with image layout asset mapping!");
         setEditingEventId(null);
         fetchAllEvents();
       } else {
@@ -130,7 +155,6 @@ export default function App() {
     event.title?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // AUTHENTICATION INTERFACE FORM OVERLAY CONDITIONAL RENDER
   if (!user) {
     return React.createElement(
       'div',
@@ -167,13 +191,11 @@ export default function App() {
     );
   }
 
-  // STANDARD APPLICATION RENDERING WRAPPED BEHIND ACTIVE SESSION PRIVILEGES
   return React.createElement(
     'div',
     { style: { background: '#f4f6f9', minHeight: '100vh', fontFamily: 'sans-serif', paddingBottom: '3rem' } },
     React.createElement(Navbar, { searchTerm, setSearchTerm }),
     
-    // User Context Identity Header Status Bar panel
     React.createElement(
       'div',
       { style: { maxWidth: '800px', margin: '1rem auto', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e2e3e5', borderRadius: '6px' } },
@@ -195,32 +217,44 @@ export default function App() {
               React.createElement('input', { type: 'text', required: true, value: formTitle, onChange: (e) => setFormTitle(e.target.value), placeholder: 'Event Title', style: { padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' } }),
               React.createElement('input', { type: 'text', required: true, value: formCategory, onChange: (e) => setFormCategory(e.target.value), placeholder: 'Category', style: { padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' } }),
               React.createElement('input', { type: 'date', required: true, value: formDate, onChange: (e) => setFormDate(e.target.value), style: { padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' } }),
-              React.createElement('div', { style: { display: 'flex', gap: '0.5rem' } },
-                React.createElement('button', { type: 'submit', style: { padding: '0.5rem 1rem', background: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' } }, 'Save Updates'),
+              
+              // NEW INTERACTIVE FORM FILE INPUT LAYOUT
+              React.createElement('label', { style: { fontWeight: 'bold', fontSize: '0.9rem', marginTop: '0.2rem' } }, 'Update Event Banner Graphic:'),
+              React.createElement('input', { type: 'file', accept: 'image/*', disabled: isUploading, onChange: handleImageFileChange, style: { padding: '0.2rem 0' } }),
+              formImageUrl && React.createElement('p', { style: { color: 'green', fontSize: '0.85rem', margin: 0 } }, `✓ Graphic bound location: ${formImageUrl}`),
+
+              React.createElement('div', { style: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem' } },
+                React.createElement('button', { type: 'submit', disabled: isUploading, style: { padding: '0.5rem 1rem', background: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' } }, 'Save Updates'),
                 React.createElement('button', { type: 'button', onClick: () => setEditingEventId(null), style: { padding: '0.5rem 1rem', background: '#6c757d', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' } }, 'Cancel')
               )
             )
           )
-        : React.createElement('p', { style: { textAlign: 'center', color: '#666', fontStyle: 'italic' } }, '💡 Click Edit or Delete on any campus event card to manage global directory data items.')
-    ),
-
-    React.createElement(
-      'div',
-      { style: { maxWidth: '800px', margin: '0 auto', padding: '0 1rem' } },
-      React.createElement('h2', { style: { textAlign: 'center', color: '#333' } }, 'Available Campus Events Directory'),
-      filteredEvents.length === 0
-        ? React.createElement('p', { style: { textAlign: 'center' } }, 'No matching records found.')
-        : filteredEvents.map((event) =>
-            React.createElement('div', { key: event.id, style: { background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '1rem', margin: '1rem 0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' } },
-              React.createElement(EventCard, { event: event, onRegisterClick: (e) => alert(`Initiating registration lookup parameters for: ${e.title}`) }),
-              
-              // Only show administrative controls if the logged in user is verified as an administrator
-              user.role === 'admin' && React.createElement('div', { style: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem', paddingLeft: '1rem' } },
-              React.createElement('button', {onClick: () => startEditEvent(event),style: { padding: '0.4rem 0.8rem', background: '#ffc107', color: '#212529', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}, '✏️ Edit Entity Parameters'),
-            React.createElement('button', {onClick: () => handleDeleteEvent(event.id),style: { padding: '0.4rem 0.8rem', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}, '🗑️ Delete Entity Context')
-        )
-    )
+: React.createElement('p', { style: { textAlign: 'center', color: '#666', fontStyle: 'italic' } }, '💡 Click Edit or Delete on any campus event card to manage global directory data items.')
+),
+React.createElement(
+'div',
+{ style: { maxWidth: '800px', margin: '0 auto', padding: '0 1rem' } },
+React.createElement('h2', { style: { textAlign: 'center', color: '#333' } }, 'Available Campus Events Directory'),
+filteredEvents.length === 0
+? React.createElement('p', { style: { textAlign: 'center' } }, 'No matching records found.')
+: filteredEvents.map((event) =>
+React.createElement('div', { key: event.id, style: { background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '1rem', margin: '1rem 0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' } },
+// Render uploaded image banner graphic context conditionally if tracking location data string points to a file path asset
+event.image_url && React.createElement('img', { src: event.image_url, alt: 'Event banner', style: { width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '6px', marginBottom: '1rem' } }),
+React.createElement(EventCard, { event: event, onRegisterClick: () => {} }),
+user.role === 'admin' && React.createElement('div', { style: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem', paddingLeft: '1rem' } },
+React.createElement('button', {
+onClick: () => startEditEvent(event),
+style: { padding: '0.4rem 0.8rem', background: '#ffc107', color: '#212529', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }
+}, '✏️ Edit Entity Parameters'),
+React.createElement('button', {
+onClick: () => handleDeleteEvent(event.id),
+style: { padding: '0.4rem 0.8rem', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }
+}, '🗑️ Delete Entity Context')
+)
+)
 )
 )
 );
 }
+
