@@ -154,7 +154,7 @@ app.post("/api/events", (req, res) => {
   );
 });
 
-// PUT: Update an existing event listing parameters
+// PUT: Update an existing event listing parameters (Milestone Goal!)
 app.put("/api/events/:id", (req, res) => {
   const { title, description = "", category, date, venue = "", organizer = "", time = "10:00", seats = 100 } = req.body;
 
@@ -163,11 +163,13 @@ app.put("/api/events/:id", (req, res) => {
   }
 
   db.run(
-    `UPDATE events SET title = ?, description = ?, category = ?, date = ?, venue = ?, organizer = ?, time = ?, seats = ? WHERE id = ?`,
+    `UPDATE events 
+     SET title = ?, description = ?, category = ?, date = ?, venue = ?, organizer = ?, time = ?, seats = ? 
+     WHERE id = ?`,
     [title, description, category, date, venue, organizer, time, seats, req.params.id],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
-      if (!this.changes) return res.status(404).json({ error: "Target event context context not found." });
+      if (!this.changes) return res.status(404).json({ error: "Target event context not found." });
       res.json({ message: "Event updated completely inside backend database storage." });
     }
   );
@@ -209,7 +211,7 @@ app.post("/api/register", (req, res) => {
 
 // Health check endpoint loop
 app.get("/api/health", (req, res) => {
-res.json({ status: "healthy", database: "connected" });
+  res.json({ status: "healthy", database: "connected" });
 });
 app.listen(PORT, () => {
 console.log(`Server executing live on port: ${PORT}`);
