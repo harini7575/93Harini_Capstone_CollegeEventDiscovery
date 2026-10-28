@@ -1,0 +1,23 @@
+meta {
+  name: Register Student for Event
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3000/api/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "event_id": 1,
+    "student_name": "Harini",
+    "student_email": "harini@student.edu"
+  }
+}
+
+docs {
+  Submits student parameter credentials to register for a specific campus event matching unique constraint rules.
+}

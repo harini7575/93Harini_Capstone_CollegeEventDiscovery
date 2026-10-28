@@ -1,0 +1,22 @@
+meta {
+  name: Coordinator Auth Login
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:3000/api/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "admin@college.edu",
+    "password": "adminpassword123"
+  }
+}
+
+docs {
+  Validates coordinator credentials against the database user accounts table and returns an access JWT bearer token session key.
+}
