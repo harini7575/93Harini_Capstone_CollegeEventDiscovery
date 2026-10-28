@@ -13,6 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+// Initialize SQLite Database File connection
 const db = new sqlite3.Database(
   path.join(__dirname, "events.db"),
   (err) => {
@@ -24,9 +25,10 @@ const db = new sqlite3.Database(
   }
 );
 
+// CRUCIAL FOR RELATIONSHIPS: Enable Foreign Key enforcement in SQLite
 db.run("PRAGMA foreign_keys = ON;");
 
-// Initialize Database Schemas including the new security Users Table
+// Initialize Database Schemas including the security Users Table
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -81,7 +83,7 @@ db.serialize(() => {
 });
 
 /* ==========================
-   AUTHENTICATION MIDDLEWARE
+   AUTHENTICATION MIDDLEWARE (JWT EVALUATION)
 ========================== */
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -131,7 +133,7 @@ app.post("/api/auth/signup", async (req, res) => {
   }
 });
 
-// Auth Point: Login / Session Sign-in
+// Auth Point: Login / Session Sign-in (JWT Issuance)
 app.post("/api/auth/login", (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -168,6 +170,7 @@ app.post("/api/auth/login", (req, res) => {
    CORE DATA API PATHS
 ========================== */
 
+// GET ALL EVENTS
 app.get("/api/events", (req, res) => {
   db.all("SELECT * FROM events ORDER BY date ASC, time ASC", [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -175,6 +178,7 @@ app.get("/api/events", (req, res) => {
   });
 });
 
+// GET STUDENT REGISTRATIONS (RELATIONAL JOIN)
 app.get("/api/registrations", (req, res) => {
   const email = String(req.query.email || "").trim().toLowerCase();
   if (!email) return res.status(400).json({ error: "Email query parameter required" });
@@ -226,6 +230,7 @@ app.put("/api/events/:id", authenticateToken, (req, res) => {
   );
 });
 
+// REGISTER STUDENT
 app.post("/api/register", (req, res) => {
   const eventId = Number(req.body.event_id);
   const name = String(req.body.student_name || "").trim();
@@ -252,6 +257,7 @@ app.post("/api/register", (req, res) => {
   });
 });
 
+// DELETE REGISTRATION
 app.delete("/api/registrations/:id", (req, res) => {
   db.run("DELETE FROM registrations WHERE id = ?", [req.params.id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
@@ -260,14 +266,17 @@ app.delete("/api/registrations/:id", (req, res) => {
   });
 });
 
-// SECURED ROUTE: Delete Event
+// SECURED ROUTE: Delete Event (Triggers Cascade)
 app.delete("/api/events/:id", authenticateToken, (req, res) => {
-  if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied. Admin access authorization required." });
-
-  db.run("DELETE FROM events WHERE id = ?", [req.params.id], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
+if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied. Admin access authorization required." });
+db.run("DELETE FROM events WHERE id = ?", [req.params.id], function (err) {
+if (err) return res.status(500).json({ error: err.message });
 if (!this.changes) return res.status(404).json({ error: "Event context not found." });
 res.json({ message: "Event context and dependent relationships purged." });
 });
+});
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+res.json({ status: "healthy", database: "connected" });
 });
 app.listen(PORT, () => console.log(`Server executing live on port: ${PORT}`));
