@@ -1,300 +1,99 @@
-const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
-const cors = require("cors");
-const path = require("path");
+export default function RegistrationModal({ event, onClose, onRegistrationSuccess }) {
+  const [name, setName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [errorMessage, setErrorMessage] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-const app = express();
-const PORT = 3000;
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setIsSubmitting(true);
 
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
-
-const db = new sqlite3.Database(
-  path.join(__dirname, "events.db"),
-  (err) => {
-    if (err) {
-      console.error("Database error:", err.message);
-    } else {
-      console.log("Connected to SQLite database");
-    }
-  }
-);
-
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      description TEXT DEFAULT '',
-      category TEXT NOT NULL,
-      date TEXT NOT NULL,
-      venue TEXT DEFAULT '',
-      organizer TEXT DEFAULT '',
-      time TEXT DEFAULT '10:00',
-      seats INTEGER DEFAULT 100
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS registrations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      event_id INTEGER NOT NULL,
-      student_name TEXT NOT NULL,
-      student_email TEXT NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (event_id) REFERENCES events(id)
-    )
-  `);
-
-  db.all("PRAGMA table_info(events)", (err, columns) => {
-    if (err) return console.error(err.message);
-
-    const names = columns.map((column) => column.name);
-
-    if (!names.includes("time")) {
-      db.run("ALTER TABLE events ADD COLUMN time TEXT DEFAULT '10:00'");
+    if (!name.trim() || !email.trim()) {
+      setErrorMessage('Please fill in all input fields completely.');
+      setIsSubmitting(false);
+      return;
     }
 
-    if (!names.includes("seats")) {
-      db.run("ALTER TABLE events ADD COLUMN seats INTEGER DEFAULT 100");
-    }
-  });
-
-  db.get("SELECT COUNT(*) AS count FROM events", (err, row) => {
-    if (err) return console.error(err.message);
-    if (row.count > 0) return;
-
-    const events = [
-      ["AI Innovation Workshop", "Learn AI and machine learning fundamentals.", "Workshop", "2026-11-05", "Seminar Hall", "Tech Club", "10:00", 60],
-      ["CodeSprint Hackathon", "Build a technology prototype with your team.", "Hackathon", "2026-11-10", "Computer Lab", "Coding Club", "09:30", 100],
-      ["Inter-College Quiz Competition", "Test your general knowledge and technical skills.", "Competition", "2026-11-15", "Auditorium", "Literary Club", "11:00", 80],
-      ["Cultural Fest 2026", "Celebrate music, dance, drama and creativity.", "Cultural", "2026-11-20", "College Ground", "Cultural Club", "16:00", 250],
-      ["UI/UX Design Sprint", "Create wireframes and prototypes for a campus app.", "Workshop", "2026-11-24", "Design Studio", "Design Club", "10:00", 50],
-      ["Data Science Bootcamp", "Learn Python, Pandas and data visualisation.", "Workshop", "2026-11-28", "AI Lab", "Data Science Club", "09:30", 70],
-      ["Startup Pitch Day", "Pitch your startup idea and receive mentor feedback.", "Entrepreneurship", "2026-12-02", "Innovation Hub", "E-Cell", "13:00", 120],
-      ["Robotics Challenge", "Build and demonstrate a robot.", "Competition", "2026-12-06", "Engineering Block", "Robotics Club", "10:00", 80],
-      ["Cybersecurity Awareness Talk", "Learn about phishing, passwords and online safety.", "Seminar", "2026-12-09", "Seminar Hall", "Cybersecurity Club", "11:00", 100],
-      ["Photography Walk", "Practice photography and visual storytelling.", "Arts", "2026-12-12", "Main Gate", "Photography Club", "08:00", 40],
-      ["Open Mic Evening", "Perform poetry, music, comedy and spoken word.", "Cultural", "2026-12-15", "Open-Air Theatre", "Literary Club", "17:00", 90],
-      ["Cloud Computing Seminar", "Explore cloud computing and deployment.", "Seminar", "2026-12-18", "Auditorium", "Cloud Club", "10:30", 100],
-      ["Sports Day", "Participate in sports and team games.", "Sports", "2026-12-21", "College Ground", "Sports Club", "08:30", 300],
-      ["Resume and Interview Workshop", "Improve your resume and interview skills.", "Career", "2027-01-06", "Placement Cell", "Career Development Cell", "10:00", 80],
-      ["Web Development Workshop", "Build a responsive website and connect an API.", "Workshop", "2027-01-10", "Computer Lab", "Web Development Club", "09:30", 60],
-      ["Green Campus Drive", "Participate in planting and sustainability activities.", "Community", "2027-01-14", "Central Courtyard", "Eco Club", "08:00", 150],
-      ["AI Project Showcase", "Showcase student AI projects and prototypes.", "Exhibition", "2027-01-18", "Innovation Hub", "AI Club", "11:00", 100],
-      ["Inter-Department Debate", "Discuss technology and society in a debate.", "Competition", "2027-01-22", "Auditorium", "Debate Society", "14:00", 60],
-      ["Game Development Jam", "Create a small playable game with a team.", "Hackathon", "2027-01-26", "Media Lab", "Gaming Club", "09:00", 70],
-      ["Music and Dance Night", "Enjoy student music and dance performances.", "Cultural", "2027-01-30", "College Ground", "Cultural Club", "17:30", 250]
-    ];
-
-    const statement = db.prepare(`
-      INSERT INTO events
-      (title, description, category, date, venue, organizer, time, seats)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    events.forEach((event) => statement.run(event));
-
-    statement.finalize((err) => {
-      if (err) console.error(err.message);
-      else console.log("20 sample events added!");
-    });
-  });
-});
-
-// Get all events
-app.get("/api/events", (req, res) => {
-  db.all("SELECT * FROM events ORDER BY date ASC, time ASC", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
-
-// Add an event
-app.post("/api/events", (req, res) => {
-  const {
-    title,
-    description = "",
-    category,
-    date,
-    venue = "",
-    organizer = "",
-    time = "10:00",
-    seats = 100
-  } = req.body;
-
-  if (!title || !category || !date) {
-    return res.status(400).json({
-      error: "Title, category and date are required."
-    });
-  }
-
-  db.run(
-    `INSERT INTO events
-     (title, description, category, date, venue, organizer, time, seats)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [title, description, category, date, venue, organizer, time, seats],
-    function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-
-      res.status(201).json({
-        message: "Event added successfully.",
-        id: this.lastID
+    try {
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_id: event.id,
+          student_name: name.trim(),
+          student_email: email.trim().toLowerCase()
+        })
       });
-    }
-  );
-});
 
-// Update an event
-app.put("/api/events/:id", (req, res) => {
-  const {
-    title,
-    description = "",
-    category,
-    date,
-    venue = "",
-    organizer = "",
-    time = "10:00",
-    seats = 100
-  } = req.body;
+      const data = await response.json();
 
-  if (!title || !category || !date) {
-    return res.status(400).json({
-      error: "Title, category and date are required."
-    });
-  }
-
-  db.run(
-    `UPDATE events
-     SET title = ?, description = ?, category = ?, date = ?,
-         venue = ?, organizer = ?, time = ?, seats = ?
-     WHERE id = ?`,
-    [title, description, category, date, venue, organizer, time, seats, req.params.id],
-    function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-
-      if (!this.changes) {
-        return res.status(404).json({ error: "Event not found." });
+      if (response.ok) {
+        alert(`Successfully registered for ${event.title}!`);
+        if (onRegistrationSuccess) onRegistrationSuccess();
+        onClose();
+      } else {
+        setErrorMessage(data.error || 'Server rejected registration parameters.');
       }
-
-      res.json({ message: "Event updated successfully." });
+    } catch (err) {
+      setErrorMessage('Network connection failure. Verify server configuration is live.');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  return React.createElement(
+    'div',
+    { style: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 } },
+    React.createElement(
+      'div',
+      { style: { background: '#fff', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '450px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' } },
+      React.createElement('h3', { style: { margin: '0 0 0.5rem 0', color: '#1e1e24' } }, `Register for ${event.title}`),
+      React.createElement('p', { style: { color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' } }, `📍 Location: ${event.venue || 'Campus'} | ⏰ Time: ${event.time}`),
+      
+      errorMessage && React.createElement('p', { style: { color: '#dc3545', background: '#ffeef0', padding: '0.5rem', borderRadius: '4px', fontSize: '0.85rem' } }, errorMessage),
+      
+      React.createElement(
+        'form',
+        { onSubmit: handleFormSubmit },
+        React.createElement('label', { style: { display: 'block', fontWeight: 'bold', marginBottom: '0.4rem', color: '#333' } }, 'Full Name:'),
+        React.createElement('input', {
+          type: 'text',
+          required: true,
+          disabled: isSubmitting,
+          placeholder: 'Enter full name',
+          value: name,
+          onChange: (e) => setName(e.target.value),
+          style: { width: '100%', padding: '0.6rem', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box' }
+        }),
+        
+        React.createElement('label', { style: { display: 'block', fontWeight: 'bold', marginBottom: '0.4rem', color: '#333' } }, 'College Email Address:'),
+        React.createElement('input', {
+          type: 'email',
+          required: true,
+          disabled: isSubmitting,
+          placeholder: 'student@college.edu',
+          value: email,
+          onChange: (e) => setEmail(e.target.value),
+          style: { width: '100%', padding: '0.6rem', marginBottom: '1.5rem', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box' }
+        }),
+        
+        React.createElement(
+          'div',
+          { style: { display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' } },
+          React.createElement('button', {
+            type: 'button',
+            disabled: isSubmitting,
+            onClick: onClose,
+            style: { padding: '0.6rem 1.2rem', background: '#e0e0e0', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }
+          }, 'Cancel'),
+          React.createElement('button', {
+            type: 'submit',
+            disabled: isSubmitting,
+            style: { padding: '0.6rem 1.2rem', background: isSubmitting ? '#a0c4ff' : '#007bff', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }
+          }, isSubmitting ? 'Processing...' : 'Confirm Registration')
+        )
+      )
+    )
   );
-});
-
-// Register for an event
-app.post("/api/register", (req, res) => {
-  const eventId = Number(req.body.event_id ?? req.body.eventId);
-  const name = String(req.body.student_name ?? req.body.name ?? "").trim();
-  const email = String(req.body.student_email ?? req.body.email ?? "")
-    .trim()
-    .toLowerCase();
-
-  if (!eventId || !name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({
-      error: "Valid event ID, student name and email are required."
-    });
-  }
-
-  db.get("SELECT id FROM events WHERE id = ?", [eventId], (err, event) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!event) return res.status(404).json({ error: "Event not found." });
-
-    db.get(
-      `SELECT id FROM registrations
-       WHERE event_id = ? AND lower(student_email) = lower(?)`,
-      [eventId, email],
-      (duplicateError, existing) => {
-        if (duplicateError) {
-          return res.status(500).json({ error: duplicateError.message });
-        }
-
-        if (existing) {
-          return res.status(409).json({
-            error: "This email is already registered for this event."
-          });
-        }
-
-        db.run(
-          `INSERT INTO registrations
-           (event_id, student_name, student_email)
-           VALUES (?, ?, ?)`,
-          [eventId, name, email],
-          function (insertError) {
-            if (insertError) {
-              return res.status(500).json({ error: insertError.message });
-            }
-
-            res.status(201).json({
-              message: "Registration successful!",
-              id: this.lastID
-            });
-          }
-        );
-      }
-    );
-  });
-});
-
-// Get registrations by email
-app.get("/api/registrations", (req, res) => {
-  const email = String(req.query.email || "").trim().toLowerCase();
-
-  if (!email) {
-    return res.status(400).json({
-      error: "Provide an email query parameter."
-    });
-  }
-
-  db.all(
-    `SELECT r.id, r.event_id, r.student_name, r.student_email,
-            r.created_at, e.title AS event_title, e.date, e.time,
-            e.venue, e.category
-     FROM registrations r
-     JOIN events e ON e.id = r.event_id
-     WHERE lower(r.student_email) = lower(?)
-     ORDER BY e.date ASC, e.time ASC`,
-    [email],
-    (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json(rows);
-    }
-  );
-});
-
-// Delete an event
-app.delete("/api/events/:id", (req, res) => {
-  db.serialize(() => {
-    db.run("DELETE FROM registrations WHERE event_id = ?", [req.params.id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-
-      db.run("DELETE FROM events WHERE id = ?", [req.params.id], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-
-        if (!this.changes) {
-          return res.status(404).json({ error: "Event not found." });
-        }
-
-        res.json({ message: "Event deleted successfully." });
-      });
-    });
-  });
-});
-
-// Cancel a registration
-app.delete("/api/registrations/:id", (req, res) => {
-  db.run("DELETE FROM registrations WHERE id = ?", [req.params.id], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
-
-    if (!this.changes) {
-      return res.status(404).json({ error: "Registration not found." });
-    }
-
-    res.json({ message: "Registration cancelled." });
-  });
-});
-
-app.listen(PORT, () => {
-  console.log(`Campus Events running at http://localhost:${PORT}`);
-});
+}
