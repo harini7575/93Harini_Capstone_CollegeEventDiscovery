@@ -1,45 +1,42 @@
-# College Event Discovery Platform
+# Campus Events — College Event Discovery Platform
 
-## Project Idea
-The College Event Discovery Platform helps students discover college events and register for them easily.
+## Capstone Project Concept & Description
+The Campus Events Discovery Platform is a centralized hub designed to bridge the gap between college event organizers and students. The application solves the problem of scattered campus communication by allowing student bodies, clubs, and administrators to post, update, and manage dynamic event listings. Students can seamlessly discover upcoming hackathons, cultural festivals, or academic seminars, register for them using their email credentials, and track their registrations. The platform utilizes a lightweight Node.js backend paired with an SQLite database to ensure quick setups and persistent local storage.
 
-## Technologies
-- HTML
-- CSS
-- JavaScript
-- Node.js
-- Express.js
-- SQLite
+## Requirements
+- Node.js 18 or later
+- Internet connection for the optional QR-code library and Google Fonts
 
-## Project Goals
-- Display upcoming college events.
-- Show event details.
-- Allow students to register for events.
-- Store event and registration details in SQLite.
-- Provide a user-friendly interface.
+## Run the project
+1. Extract the ZIP file.
+2. Open the extracted `campus_events_project` folder in VS Code.
+3. Open the terminal in that folder.
+4. Run `npm install`
+5. Run `npm start`
+6. Open `http://localhost:3000` in your browser.
 
-## Day-by-Day Plan
+The SQLite database `events.db` is created automatically when the server starts. Sample events are inserted only when the events table is empty.
 
-### Day 1 — Planning
-- Identify the problem and project requirements.
+## Main API routes
+- `GET /api/events` — list events
+- `POST /api/events` — create an event
+- `PUT /api/events/:id` — update an event
+- `DELETE /api/events/:id` — delete an event
+- `POST /api/register` — register a student
+- `GET /api/registrations?email=student@example.com` — list registrations for an email
+- `DELETE /api/registrations/:id` — cancel a registration
+- `GET /api/health` — server health check
 
-### Day 2 — UI Design
-- Plan the website layout and user interface.
+## Notes
+- Favorites, selected interests and reminder preferences are stored in the current browser.
+- Registration data and event data are stored in SQLite when the frontend is connected to the API.
+- The admin screen is a demo interface, not protected by login. Add real authentication and authorization before deploying it publicly.
+- Browser reminders can only be checked while the website is open; reliable scheduled notifications require a backend scheduler or push-notification service.
 
-### Day 3 — Frontend Development
-- Build the pages using HTML, CSS, and JavaScript.
-
-### Day 4 — Backend Development
-- Develop APIs using Node.js and Express.js.
-
-### Day 5 — Database Setup
-- Store event and registration details using SQLite.
-
-### Day 6 — Integration and Testing
-- Connect the frontend and backend and test the features.
-
-### Day 7 — Review and Improvements
-- Fix errors, improve the interface, and update documentation.
-
-## Expected Outcome
-A user-friendly website where students can discover college events and register for them.
+## Capstone Journey Day-by-Day Plan
+* **Day 1:** Set up Git repository architecture, configure the root directory structure, and implement assignment milestone documentation in the README file.
+* **Day 2:** Configure the Express backend server application framework and design the relational database schema tables inside SQLite.
+* **Day 3:** Build structural RESTful API backend endpoint routes to securely process user registrations, event creation updates, and search listings.
+* **Day 4:** Develop frontend template interfaces using semantic HTML elements, clean responsive CSS variables, and layout structures.
+* **Day 5:** Connect interactive user dashboard forms with backend controller routes using JavaScript asynchronous network fetch calls.
+* **Day 6:** Implement client-side notification tracking parameters and perform robust, comprehensive end-to-end local project validation testing.
