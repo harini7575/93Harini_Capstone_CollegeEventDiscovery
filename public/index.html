@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Events | College Event Discovery</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navbar container">
+      <a class="brand" href="#home"><span class="brand-mark">✦</span> Campus<span>Events</span></a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+      <div class="nav-links" id="navLinks">
+        <a href="#home">Home</a>
+        <a href="#events">Explore Events</a>
+        <button class="nav-button" data-view="favorites">♡ Favorites <span class="nav-count" id="favoriteNavCount">0</span></button>
+        <button class="nav-button" data-view="registrations">My Registrations</button>
+        <button class="nav-button" data-view="admin">Admin</button>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="home">
+      <div class="hero-glow glow-one"></div>
+      <div class="hero-glow glow-two"></div>
+      <div class="container hero-content">
+        <p class="eyebrow"><span class="live-dot"></span> YOUR CAMPUS, YOUR COMMUNITY</p>
+        <h1>Make campus life<br><span>unforgettable.</span></h1>
+        <p class="hero-copy">Discover workshops, hackathons, cultural fests and opportunities happening around you.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#events">Explore events <span>↗</span></a>
+          <button class="btn btn-outline" data-view="registrations">My registrations</button>
+        </div>
+        <div class="hero-stats">
+          <div><strong id="heroEventCount">0</strong><span>Events to explore</span></div>
+          <div><strong id="heroCategoryCount">0</strong><span>Categories</span></div>
+          <div><strong>100%</strong><span>Campus energy</span></div>
+        </div>
+      </div>
+      <div class="hero-side-note">LEARN · CONNECT · CREATE</div>
+    </section>
+
+    <section class="section container" id="events">
+      <div class="section-heading">
+        <div><p class="eyebrow">FIND YOUR NEXT EXPERIENCE</p><h2>Explore events<span class="accent">.</span></h2></div>
+        <p class="section-description">The best memories start with a plan. Find yours.</p>
+      </div>
+
+      <div class="toolbar">
+        <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Search events, venues, interests..." aria-label="Search events"></label>
+        <select id="categoryFilter" aria-label="Filter by category">
+          <option value="All">All categories</option>
+          <option>Workshop</option><option>Hackathon</option><option>Cultural</option>
+          <option>Competition</option><option>Seminar</option><option>Sports</option>
+        </select>
+        <select id="sortFilter" aria-label="Sort events">
+          <option value="soon">Soonest first</option>
+          <option value="title">Name A–Z</option>
+        </select>
+      </div>
+
+      <div class="category-chips" id="categoryChips">
+        <button class="chip active" data-category="All">✦ All events</button>
+        <button class="chip" data-category="Workshop">🧠 Workshops</button>
+        <button class="chip" data-category="Hackathon">💻 Hackathons</button>
+        <button class="chip" data-category="Cultural">🎭 Cultural</button>
+        <button class="chip" data-category="Competition">🏆 Competitions</button>
+        <button class="chip" data-category="Sports">⚡ Sports</button>
+      </div>
+
+      <div class="results-line">
+        <span id="resultCount">0 events</span>
+        <button class="text-button" id="clearFilters">Clear filters ↺</button>
+      </div>
+
+      <div class="event-grid" id="eventGrid" aria-live="polite"></div>
+
+      <div class="empty-state hidden" id="emptyState">
+        <div class="empty-icon">⌕</div>
+        <h3>No events found</h3>
+        <p>Try another keyword or category.</p>
+        <button class="btn btn-primary" id="resetSearch">Reset search</button>
+      </div>
+    </section>
+
+    <section class="recommendations-section">
+      <div class="container recommendation-inner">
+        <div>
+          <p class="eyebrow">MADE FOR YOUR INTERESTS</p>
+          <h2>Your next favourite<br>might be <span class="accent">one click away.</span></h2>
+          <p class="muted">Choose what you enjoy and we’ll highlight matching campus events.</p>
+        </div>
+        <div class="interest-panel">
+          <p class="interest-label">I'M INTERESTED IN</p>
+          <div class="interest-options" id="interestOptions">
+            <label><input type="checkbox" value="Workshop"> <span>🧠 Workshops</span></label>
+            <label><input type="checkbox" value="Hackathon"> <span>💻 Tech</span></label>
+            <label><input type="checkbox" value="Cultural"> <span>🎭 Culture</span></label>
+            <label><input type="checkbox" value="Competition"> <span>🏆 Competitions</span></label>
+            <label><input type="checkbox" value="Sports"> <span>⚡ Sports</span></label>
+          </div>
+          <button class="btn btn-primary" id="saveInterests">Personalize my events ↗</button>
+          <p class="small-note" id="recommendationNote">Your preferences stay in this browser.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container feature-section">
+      <div class="section-heading">
+        <div><p class="eyebrow">MORE THAN A CALENDAR</p><h2>Campus life, simplified<span class="accent">.</span></h2></div>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card"><div class="feature-icon violet">♡</div><h3>Save what you love</h3><p>Bookmark events and find them again whenever you're ready.</p></article>
+        <article class="feature-card"><div class="feature-icon orange">◷</div><h3>Stay in the loop</h3><p>Enable browser reminders for events you don't want to miss.</p></article>
+        <article class="feature-card"><div class="feature-icon green">▦</div><h3>One place for plans</h3><p>See your registrations and registration QR codes in one dashboard.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <a class="brand" href="#home"><span class="brand-mark">✦</span> Campus<span>Events</span></a>
+      <p>Find your people. Discover your campus. Make it count.</p>
+      <span>© <span id="year"></span> Campus Events</span>
+    </div>
+  </footer>
+
+  <div class="modal-backdrop hidden" id="registrationModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <button class="modal-close" data-close-modal aria-label="Close">×</button>
+      <p class="eyebrow">SAVE YOUR SPOT</p>
+      <h2 id="modalTitle">Register for event</h2>
+      <p class="muted" id="modalEventInfo"></p>
+      <form id="registrationForm">
+        <input type="hidden" id="registrationEventId">
+        <label for="studentName">Full name</label>
+        <input id="studentName" name="name" required maxlength="80" placeholder="Enter your name">
+        <label for="studentEmail">College email</label>
+        <input id="studentEmail" name="email" type="email" required maxlength="120" placeholder="you@college.edu">
+        <label class="check-line"><input type="checkbox" id="reminderOptIn"> Remind me before this event</label>
+        <button class="btn btn-primary full-width" type="submit" id="registerSubmit">Confirm registration ↗</button>
+        <p class="form-message" id="registrationMessage" role="status"></p>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="dashboardModal" role="dialog" aria-modal="true" aria-labelledby="dashboardTitle">
+    <div class="modal modal-wide">
+      <button class="modal-close" data-close-dashboard aria-label="Close">×</button>
+      <p class="eyebrow">YOUR CAMPUS SPACE</p>
+      <h2 id="dashboardTitle">My registrations</h2>
+      <div id="dashboardContent"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="adminModal" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+    <div class="modal modal-wide">
+      <button class="modal-close" data-close-admin aria-label="Close">×</button>
+      <p class="eyebrow">EVENT MANAGEMENT</p>
+      <h2 id="adminTitle">Admin dashboard</h2>
+      <p class="notice">Demo mode: changes are saved through the API when the server is running. Add server-side authentication before public deployment.</p>
+      <form id="eventForm" class="admin-form">
+        <input type="hidden" id="adminEventId">
+        <div class="form-two-col">
+          <div><label for="adminTitleInput">Event name</label><input id="adminTitleInput" required maxlength="100" placeholder="e.g. AI Innovation Day"></div>
+          <div><label for="adminCategory">Category</label><select id="adminCategory"><option>Workshop</option><option>Hackathon</option><option>Cultural</option><option>Competition</option><option>Seminar</option><option>Sports</option></select></div>
+          <div><label for="adminDate">Date</label><input id="adminDate" type="date" required></div>
+          <div><label for="adminTime">Time</label><input id="adminTime" type="time" required value="10:00"></div>
+          <div><label for="adminVenue">Venue</label><input id="adminVenue" required maxlength="100" placeholder="Campus auditorium"></div>
+          <div><label for="adminSeats">Available seats</label><input id="adminSeats" type="number" min="1" max="10000" value="100" required></div>
+        </div>
+        <label for="adminDescription">Description</label>
+        <textarea id="adminDescription" rows="3" required maxlength="500" placeholder="What will students experience?"></textarea>
+        <div class="admin-form-actions">
+          <button class="btn btn-primary" type="submit" id="adminSaveButton">Add event</button>
+          <button class="btn btn-outline-dark" type="button" id="cancelEdit">Clear form</button>
+        </div>
+      </form>
+      <h3 class="admin-list-heading">Manage events</h3>
+      <div id="adminEventList" class="admin-event-list"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
