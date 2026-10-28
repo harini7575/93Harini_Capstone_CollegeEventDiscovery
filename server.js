@@ -22,7 +22,7 @@ const db = new sqlite3.Database(
   }
 );
 
-// Initialize DB Schemas sequentially
+// Initialize DB Tables and Structure
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS events (
@@ -49,6 +49,7 @@ db.serialize(() => {
     )
   `);
 
+  // Handle checking/adding runtime schema column safety modifications
   db.all("PRAGMA table_info(events)", (err, columns) => {
     if (err) return console.error(err.message);
     const names = columns.map((column) => column.name);
@@ -97,12 +98,12 @@ db.serialize(() => {
     events.forEach((event) => statement.run(event));
     statement.finalize((err) => {
       if (err) console.error(err.message);
-      else console.log("20 diagnostic sample events added to events.db!");
+      else console.log("20 sample diagnostic events populated inside events.db!");
     });
   });
 });
 
-// DATABASE READ: Get all events
+// GET: Retrieve all events ordered chronologically
 app.get("/api/events", (req, res) => {
   db.all("SELECT * FROM events ORDER BY date ASC, time ASC", [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -110,7 +111,32 @@ app.get("/api/events", (req, res) => {
   });
 });
 
-// DATABASE WRITE: Add a new event
+// GET: Fetch event registration records filtered by student email parameter
+app.get("/api/registrations", (req, res) => {
+  const studentEmail = req.query.email;
+
+  if (!studentEmail) {
+    return res.status(400).json({ error: "Query parameter 'email' is required to fetch registrations." });
+  }
+
+  const sanitizedEmail = String(studentEmail).trim().toLowerCase();
+  
+  const sqlQuery = `
+    SELECT r.id AS registration_id, r.student_name, r.student_email, r.created_at,
+           e.id AS event_id, e.title AS event_title, e.date AS event_date, e.venue AS event_venue, e.time AS event_time
+    FROM registrations r
+    JOIN events e ON r.event_id = e.id
+    WHERE lower(r.student_email) = ?
+    ORDER BY e.date ASC
+  `;
+
+  db.all(sqlQuery, [sanitizedEmail], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// POST: Add a new campus event listing context
 app.post("/api/events", (req, res) => {
   const { title, description = "", category, date, venue = "", organizer = "", time = "10:00", seats = 100 } = req.body;
 
@@ -128,7 +154,7 @@ app.post("/api/events", (req, res) => {
   );
 });
 
-// DATABASE WRITE: Update an existing event
+// PUT: Update an existing event listing parameters
 app.put("/api/events/:id", (req, res) => {
   const { title, description = "", category, date, venue = "", organizer = "", time = "10:00", seats = 100 } = req.body;
 
@@ -141,13 +167,13 @@ app.put("/api/events/:id", (req, res) => {
     [title, description, category, date, venue, organizer, time, seats, req.params.id],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
-      if (!this.changes) return res.status(404).json({ error: "Target event context not found." });
-      res.json({ message: "Event updated completely inside backend SQLite storage." });
+      if (!this.changes) return res.status(404).json({ error: "Target event context context not found." });
+      res.json({ message: "Event updated completely inside backend database storage." });
     }
   );
 });
 
-// DATABASE WRITE: Register a student with duplicate data assertion checks
+// POST: Register a student with database parameter validation checks
 app.post("/api/register", (req, res) => {
   const eventId = Number(req.body.event_id ?? req.body.eventId);
   const name = String(req.body.student_name ?? req.body.name ?? "").trim();
@@ -181,6 +207,10 @@ app.post("/api/register", (req, res) => {
   });
 });
 
+// Health check endpoint loop
+app.get("/api/health", (req, res) => {
+res.json({ status: "healthy", database: "connected" });
+});
 app.listen(PORT, () => {
-  console.log(`Server executing live on port: ${PORT}`);
+console.log(`Server executing live on port: ${PORT}`);
 });
