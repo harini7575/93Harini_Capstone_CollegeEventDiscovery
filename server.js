@@ -6,10 +6,12 @@ const path = require("path");
 const app = express();
 const PORT = 3000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+// SQLite Database Connection
 const db = new sqlite3.Database(
   path.join(__dirname, "events.db"),
   (err) => {
@@ -21,6 +23,7 @@ const db = new sqlite3.Database(
   }
 );
 
+// Create Tables
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS events (
@@ -47,22 +50,35 @@ db.serialize(() => {
     )
   `);
 
+  // Check existing columns
   db.all("PRAGMA table_info(events)", (err, columns) => {
-    if (err) return console.error(err.message);
+    if (err) {
+      console.error(err.message);
+      return;
+    }
 
     const names = columns.map((column) => column.name);
 
     if (!names.includes("time")) {
-      db.run("ALTER TABLE events ADD COLUMN time TEXT DEFAULT '10:00'");
+      db.run(
+        "ALTER TABLE events ADD COLUMN time TEXT DEFAULT '10:00'"
+      );
     }
 
     if (!names.includes("seats")) {
-      db.run("ALTER TABLE events ADD COLUMN seats INTEGER DEFAULT 100");
+      db.run(
+        "ALTER TABLE events ADD COLUMN seats INTEGER DEFAULT 100"
+      );
     }
   });
 
+  // Insert sample events if database is empty
   db.get("SELECT COUNT(*) AS count FROM events", (err, row) => {
-    if (err) return console.error(err.message);
+    if (err) {
+      console.error(err.message);
+      return;
+    }
+
     if (row.count > 0) return;
 
     const events = [
@@ -97,21 +113,31 @@ db.serialize(() => {
     events.forEach((event) => statement.run(event));
 
     statement.finalize((err) => {
-      if (err) console.error(err.message);
-      else console.log("20 sample events added!");
+      if (err) {
+        console.error(err.message);
+      } else {
+        console.log("20 sample events added!");
+      }
     });
   });
 });
 
-// Get all events
+// GET: All Events
 app.get("/api/events", (req, res) => {
-  db.all("SELECT * FROM events ORDER BY date ASC, time ASC", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
+  db.all(
+    "SELECT * FROM events ORDER BY date ASC, time ASC",
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
+      res.json(rows);
+    }
+  );
 });
 
-// Add an event
+// POST: Add New Event
 app.post("/api/events", (req, res) => {
   const {
     title,
@@ -132,11 +158,13 @@ app.post("/api/events", (req, res) => {
 
   db.run(
     `INSERT INTO events
-     (title, description, category, date, venue, organizer, time, seats)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    (title, description, category, date, venue, organizer, time, seats)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [title, description, category, date, venue, organizer, time, seats],
     function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
 
       res.status(201).json({
         message: "Event added successfully.",
@@ -146,8 +174,10 @@ app.post("/api/events", (req, res) => {
   );
 });
 
-// Update an event
+// PUT: Update Existing Event
 app.put("/api/events/:id", (req, res) => {
+  const id = Number(req.params.id);
+
   const {
     title,
     description = "",
@@ -158,6 +188,12 @@ app.put("/api/events/:id", (req, res) => {
     time = "10:00",
     seats = 100
   } = req.body;
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({
+      error: "Invalid event ID."
+    });
+  }
 
   if (!title || !category || !date) {
     return res.status(400).json({
@@ -170,76 +206,134 @@ app.put("/api/events/:id", (req, res) => {
      SET title = ?, description = ?, category = ?, date = ?,
          venue = ?, organizer = ?, time = ?, seats = ?
      WHERE id = ?`,
-    [title, description, category, date, venue, organizer, time, seats, req.params.id],
+    [
+      title,
+      description,
+      category,
+      date,
+      venue,
+      organizer,
+      time,
+      seats,
+      id
+    ],
     function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-
-      if (!this.changes) {
-        return res.status(404).json({ error: "Event not found." });
+      if (err) {
+        return res.status(500).json({
+          error: err.message
+        });
       }
 
-      res.json({ message: "Event updated successfully." });
+      if (this.changes === 0) {
+        return res.status(404).json({
+          error: "Event not found."
+        });
+      }
+
+      // Fetch updated event from database
+      db.get(
+        "SELECT * FROM events WHERE id = ?",
+        [id],
+        (err, updatedEvent) => {
+          if (err) {
+            return res.status(500).json({
+              error: err.message
+            });
+          }
+
+          res.json({
+            message: "Event updated successfully.",
+            event: updatedEvent
+          });
+        }
+      );
     }
   );
 });
 
-// Register for an event
+// POST: Register for Event
 app.post("/api/register", (req, res) => {
   const eventId = Number(req.body.event_id ?? req.body.eventId);
-  const name = String(req.body.student_name ?? req.body.name ?? "").trim();
-  const email = String(req.body.student_email ?? req.body.email ?? "")
-    .trim()
-    .toLowerCase();
 
-  if (!eventId || !name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const name = String(
+    req.body.student_name ?? req.body.name ?? ""
+  ).trim();
+
+  const email = String(
+    req.body.student_email ?? req.body.email ?? ""
+  ).trim().toLowerCase();
+
+  if (
+    !Number.isInteger(eventId) ||
+    eventId <= 0 ||
+    !name ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  ) {
     return res.status(400).json({
       error: "Valid event ID, student name and email are required."
     });
   }
 
-  db.get("SELECT id FROM events WHERE id = ?", [eventId], (err, event) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!event) return res.status(404).json({ error: "Event not found." });
+  db.get(
+    "SELECT id FROM events WHERE id = ?",
+    [eventId],
+    (err, event) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
 
-    db.get(
-      `SELECT id FROM registrations
-       WHERE event_id = ? AND lower(student_email) = lower(?)`,
-      [eventId, email],
-      (duplicateError, existing) => {
-        if (duplicateError) {
-          return res.status(500).json({ error: duplicateError.message });
-        }
+      if (!event) {
+        return res.status(404).json({
+          error: "Event not found."
+        });
+      }
 
-        if (existing) {
-          return res.status(409).json({
-            error: "This email is already registered for this event."
-          });
-        }
-
-        db.run(
-          `INSERT INTO registrations
-           (event_id, student_name, student_email)
-           VALUES (?, ?, ?)`,
-          [eventId, name, email],
-          function (insertError) {
-            if (insertError) {
-              return res.status(500).json({ error: insertError.message });
-            }
-
-            res.status(201).json({
-              message: "Registration successful!",
-              id: this.lastID
+      db.get(
+        `SELECT id FROM registrations
+         WHERE event_id = ? AND lower(student_email) = lower(?)`,
+        [eventId, email],
+        (duplicateError, existing) => {
+          if (duplicateError) {
+            return res.status(500).json({
+              error: duplicateError.message
             });
           }
-        );
-      }
-    );
-  });
+
+          if (existing) {
+            return res.status(409).json({
+              error: "This email is already registered for this event."
+            });
+          }
+
+          db.run(
+            `INSERT INTO registrations
+            (event_id, student_name, student_email)
+            VALUES (?, ?, ?)`,
+            [eventId, name, email],
+            function (insertError) {
+              if (insertError) {
+                return res.status(500).json({
+                  error: insertError.message
+                });
+              }
+
+              res.status(201).json({
+                message: "Registration successful!",
+                id: this.lastID
+              });
+            }
+          );
+        }
+      );
+    }
+  );
 });
 
-// Get registrations by email
+// GET: Registrations by Email
 app.get("/api/registrations", (req, res) => {
-  const email = String(req.query.email || "").trim().toLowerCase();
+  const email = String(req.query.email || "")
+    .trim()
+    .toLowerCase();
 
   if (!email) {
     return res.status(400).json({
@@ -257,44 +351,98 @@ app.get("/api/registrations", (req, res) => {
      ORDER BY e.date ASC, e.time ASC`,
     [email],
     (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
       res.json(rows);
     }
   );
 });
 
-// Delete an event
+// DELETE: Delete Event and Registrations
 app.delete("/api/events/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({
+      error: "Invalid event ID."
+    });
+  }
+
   db.serialize(() => {
-    db.run("DELETE FROM registrations WHERE event_id = ?", [req.params.id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-
-      db.run("DELETE FROM events WHERE id = ?", [req.params.id], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-
-        if (!this.changes) {
-          return res.status(404).json({ error: "Event not found." });
+    db.run(
+      "DELETE FROM registrations WHERE event_id = ?",
+      [id],
+      (err) => {
+        if (err) {
+          return res.status(500).json({
+            error: err.message
+          });
         }
 
-        res.json({ message: "Event deleted successfully." });
-      });
-    });
+        db.run(
+          "DELETE FROM events WHERE id = ?",
+          [id],
+          function (err) {
+            if (err) {
+              return res.status(500).json({
+                error: err.message
+              });
+            }
+
+            if (this.changes === 0) {
+              return res.status(404).json({
+                error: "Event not found."
+              });
+            }
+
+            res.json({
+              message: "Event deleted successfully."
+            });
+          }
+        );
+      }
+    );
   });
 });
 
-// Cancel a registration
+// DELETE: Cancel Registration
 app.delete("/api/registrations/:id", (req, res) => {
-  db.run("DELETE FROM registrations WHERE id = ?", [req.params.id], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
+  const id = Number(req.params.id);
 
-    if (!this.changes) {
-      return res.status(404).json({ error: "Registration not found." });
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({
+      error: "Invalid registration ID."
+    });
+  }
+
+  db.run(
+    "DELETE FROM registrations WHERE id = ?",
+    [id],
+    function (err) {
+      if (err) {
+        return res.status(500).json({
+          error: err.message
+        });
+      }
+
+      if (this.changes === 0) {
+        return res.status(404).json({
+          error: "Registration not found."
+        });
+      }
+
+      res.json({
+        message: "Registration cancelled."
+      });
     }
-
-    res.json({ message: "Registration cancelled." });
-  });
+  );
 });
 
+// Start Server
 app.listen(PORT, () => {
-  console.log(`Campus Events running at http://localhost:${PORT}`);
+  console.log(
+    `Server is running at port  http://localhost:${PORT}`
+  );
 });
